@@ -17,6 +17,7 @@
             --accent-gold: #ffd700;
             --accent-green: #00d084;
             --accent-red: #ff4757;
+            --accent-blue: #3498db;
             --text-primary: #e8eaf6;
             --text-secondary: #94a3b8;
             --border: #2d3748;
@@ -60,7 +61,6 @@
             font-size: 1.1rem;
         }
 
-        /* Global Settings */
         .global-panel {
             background: var(--bg-card);
             border-radius: 16px;
@@ -118,7 +118,6 @@
             box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
         }
 
-        /* Account Cards */
         .accounts-section {
             margin-bottom: 2rem;
         }
@@ -156,6 +155,27 @@
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px -5px rgba(255, 215, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+        }
+
+        .btn-blue {
+            background: linear-gradient(135deg, var(--accent-blue), #2980b9);
+            color: white;
+        }
+
+        .btn-blue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(52, 152, 219, 0.3);
         }
 
         .btn-danger {
@@ -258,7 +278,6 @@
             font-size: 0.95rem;
         }
 
-        /* Results */
         .result-box {
             background: linear-gradient(135deg, rgba(0, 208, 132, 0.1), rgba(0, 208, 132, 0.05));
             border: 2px solid var(--accent-green);
@@ -290,7 +309,6 @@
             margin-top: 0.5rem;
         }
 
-        /* Quick Actions */
         .quick-actions {
             background: var(--bg-card);
             border-radius: 16px;
@@ -305,18 +323,6 @@
             flex-wrap: wrap;
         }
 
-        .btn-secondary {
-            background: var(--bg-dark);
-            border: 2px solid var(--border);
-            color: var(--text-primary);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--accent-gold);
-            color: var(--accent-gold);
-        }
-
-        /* Summary Panel */
         .summary-panel {
             background: linear-gradient(135deg, var(--bg-card), rgba(255, 215, 0, 0.05));
             border-radius: 16px;
@@ -347,35 +353,6 @@
             color: var(--accent-gold);
         }
 
-        /* XAGUSD Specific Fields */
-        .xagusd-fields {
-            display: none;
-        }
-
-        .xagusd-fields.active {
-            display: grid;
-            gap: 1rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            body { padding: 1rem; }
-            h1 { font-size: 1.75rem; }
-            .accounts-grid { grid-template-columns: 1fr; }
-            .field-row { grid-template-columns: 1fr; }
-        }
-
-        /* Animations */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .calculating {
-            animation: pulse 1.5s infinite;
-        }
-
-        /* Copy notification */
         .toast {
             position: fixed;
             bottom: 2rem;
@@ -394,6 +371,32 @@
         .toast.show {
             transform: translateY(0);
             opacity: 1;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            h1 { font-size: 1.75rem; }
+            .accounts-grid { grid-template-columns: 1fr; }
+            .field-row { grid-template-columns: 1fr; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .preset-info {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid var(--accent-blue);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
         }
     </style>
 <base target="_blank">
@@ -439,16 +442,22 @@
                 <span>⚙️</span>
                 <span>Account Management</span>
             </div>
+            
+            <div class="preset-info">
+                💡 <strong>Tip:</strong> Save your setup as a .json file to your PC. Tomorrow, click "Load Preset" to restore all accounts instantly!
+            </div>
+            
             <div class="action-buttons">
                 <button class="btn btn-primary" onclick="addAccount()">
                     <span>+</span> Add New Account
                 </button>
-                <button class="btn btn-secondary" onclick="savePreset()">
-                    💾 Save Preset
+                <button class="btn btn-blue" onclick="savePresetToFile()">
+                    💾 Save Preset to PC
                 </button>
-                <button class="btn btn-secondary" onclick="loadPreset()">
-                    📂 Load Preset
+                <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                    📂 Load Preset from PC
                 </button>
+                <input type="file" id="fileInput" class="file-input" accept=".json" onchange="loadPresetFromFile(this)">
                 <button class="btn btn-secondary" onclick="exportResults()">
                     📊 Export Results
                 </button>
@@ -595,17 +604,13 @@
                 const contractSize = parseFloat(card.querySelector('.contract-size').value) || 5000;
                 
                 if (riskAmount > 0 && slPips > 0) {
-                    // Formula: Risk / (SL * Contract Size) * 100000 for standard lots
-                    // Adjusted for silver: Risk / SL / Contract Size * 100000
                     lotSize = (riskAmount / slPips) / contractSize;
-                    lotSize = Math.round(lotSize * 100) / 100; // Round to 2 decimals
-                    
+                    lotSize = Math.round(lotSize * 100) / 100;
                     detailText = `Risk: $${riskAmount} | SL: ${slPips} | Contract: ${contractSize}`;
                 }
             } else {
-                // Standard forex/crypto calculation
                 if (riskAmount > 0 && slPips > 0) {
-                    lotSize = riskAmount / (slPips * 10); // Simplified for demo
+                    lotSize = riskAmount / (slPips * 10);
                     lotSize = Math.round(lotSize * 100) / 100;
                     detailText = `Risk: $${riskAmount} | SL: ${slPips} pips`;
                 }
@@ -617,7 +622,6 @@
             resultEl.textContent = lotSize > 0 ? lotSize.toFixed(2) : '0.00';
             detailEl.textContent = detailText || 'Enter values to calculate';
             
-            // Visual feedback
             if (lotSize > 0) {
                 resultEl.style.color = 'var(--accent-green)';
             } else {
@@ -635,7 +639,6 @@
                 input.value = commonSL;
             });
             
-            // Recalculate all
             accounts.forEach((_, accountId) => {
                 calculateLotSize(accountId);
             });
@@ -650,8 +653,6 @@
             const pair = document.getElementById('globalPair').value;
             document.getElementById('summaryPair').textContent = pair;
             
-            // Re-render accounts if switching to/from XAGUSD
-            // For now, just recalculate
             accounts.forEach((_, accountId) => {
                 calculateLotSize(accountId);
             });
@@ -694,48 +695,97 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        function savePreset() {
-            const data = [];
+        // NEW: Save preset as file to PC
+        function savePresetToFile() {
+            const presetData = {
+                version: "1.0",
+                savedAt: new Date().toISOString(),
+                globalPair: document.getElementById('globalPair').value,
+                globalSL: document.getElementById('globalSL').value,
+                accounts: []
+            };
+            
             accounts.forEach((_, accountId) => {
                 const card = document.getElementById(accountId);
-                data.push({
+                const accountData = {
                     name: card.querySelector('.account-name-input').value,
                     risk: card.querySelector('.risk-amount').value,
                     sl: card.querySelector('.sl-pips').value,
-                    contract: card.querySelector('.contract-size')?.value || ''
-                });
+                    contractSize: card.querySelector('.contract-size')?.value || '5000'
+                };
+                presetData.accounts.push(accountData);
             });
             
-            localStorage.setItem('tradingPreset', JSON.stringify(data));
-            showToast('Preset saved!');
+            // Convert to JSON and create download
+            const jsonStr = JSON.stringify(presetData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `position-sizer-preset-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('Preset saved to Downloads folder!');
         }
 
-        function loadPreset() {
-            const saved = localStorage.getItem('tradingPreset');
-            if (!saved) {
-                showToast('No preset found!');
-                return;
-            }
+        // NEW: Load preset from PC file
+        function loadPresetFromFile(input) {
+            const file = input.files[0];
+            if (!file) return;
             
-            const data = JSON.parse(saved);
-            // Clear and reload
-            document.getElementById('accountsContainer').innerHTML = '';
-            accounts.clear();
-            accountCounter = 0;
-            
-            data.forEach(acc => {
-                addAccount(acc.name);
-                const card = document.getElementById(`account-${accountCounter}`);
-                card.querySelector('.risk-amount').value = acc.risk;
-                card.querySelector('.sl-pips').value = acc.sl;
-                if (acc.contract) {
-                    const contractInput = card.querySelector('.contract-size');
-                    if (contractInput) contractInput.value = acc.contract;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const presetData = JSON.parse(e.target.result);
+                    
+                    // Validate format
+                    if (!presetData.accounts || !Array.isArray(presetData.accounts)) {
+                        throw new Error('Invalid preset format');
+                    }
+                    
+                    // Clear current accounts
+                    document.getElementById('accountsContainer').innerHTML = '';
+                    accounts.clear();
+                    accountCounter = 0;
+                    
+                    // Restore global settings
+                    if (presetData.globalPair) {
+                        document.getElementById('globalPair').value = presetData.globalPair;
+                    }
+                    if (presetData.globalSL) {
+                        document.getElementById('globalSL').value = presetData.globalSL;
+                    }
+                    
+                    // Restore accounts
+                    presetData.accounts.forEach(acc => {
+                        addAccount(acc.name);
+                        const card = document.getElementById(`account-${accountCounter}`);
+                        if (card) {
+                            card.querySelector('.risk-amount').value = acc.risk || '';
+                            card.querySelector('.sl-pips').value = acc.sl || '';
+                            const contractInput = card.querySelector('.contract-size');
+                            if (contractInput && acc.contractSize) {
+                                contractInput.value = acc.contractSize;
+                            }
+                            calculateLotSize(`account-${accountCounter}`);
+                        }
+                    });
+                    
+                    updateAllCalculations();
+                    showToast(`Loaded ${presetData.accounts.length} accounts from preset!`);
+                    
+                } catch (error) {
+                    alert('Error loading preset: ' + error.message);
                 }
-                calculateLotSize(`account-${accountCounter}`);
-            });
+            };
+            reader.readAsText(file);
             
-            showToast('Preset loaded!');
+            // Reset input so same file can be selected again
+            input.value = '';
         }
 
         function exportResults() {
@@ -778,7 +828,7 @@
             }
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
-                savePreset();
+                savePresetToFile();
             }
         });
     </script>
